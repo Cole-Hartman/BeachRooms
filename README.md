@@ -1,8 +1,8 @@
-# 🏫 BeachRooms (Empty Classrooms @ CSULB)
-
-**Team Ticojol**
+# 🏫 BeachRooms - Ticojol
 
 BeachRooms is a **student-built mobile app** that helps **CSULB students find empty classrooms** to use as study spaces. With campus construction and record enrollment reducing available study areas, many classrooms sit unused throughout the day. BeachRooms turns those empty rooms into accessible, quiet study spots—directly from your phone.
+
+### [Project EPIC](https://github.com/Cole-Hartman/CECS-491B-TICOJOL-BEACH-ROOMS/issues/2)
 
 ---
 
