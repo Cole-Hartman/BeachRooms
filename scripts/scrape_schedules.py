@@ -18,13 +18,17 @@ import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
-from building_coords import BUILDING_DATA, SKIP_BUILDING_CODES, SKIP_LOCATIONS
-
 BASE_URL = "https://web.csulb.edu/depts/enrollment/registration/class_schedule/Spring_2026/By_Subject/"
 SEMESTER = "Spring 2026"
 BATCH_SIZE = 200
 REQUEST_DELAY = 1.0  # seconds between page fetches
 DEFAULT_CAPACITY = 30  # schedule pages don't include room capacity
+
+# Locations to skip — not real buildings/classrooms
+SKIP_LOCATIONS = {"ONLINE-ONLY", "OFF-CAMP", "TBA", "NA", ""}
+
+# Outdoor/athletic venues — not useful as study spaces
+SKIP_BUILDING_CODES = {"CTS", "FLD", "RNG", "SWM"}
 
 # Day abbreviation -> day_of_week integer (0=Sunday, 6=Saturday)
 DAY_MAP = {
@@ -186,14 +190,13 @@ def parse_subject_page(html: str) -> list[dict]:
 
 def process_sections(
     supabase_client, sections: list[dict], dry_run: bool = False
-) -> tuple[int, int, set[str]]:
+) -> tuple[int, int]:
     """Process parsed sections: upsert buildings/classrooms, insert schedules.
 
-    Returns (inserted_count, skipped_count, unknown_building_codes).
+    Returns (inserted_count, skipped_count).
     """
     buildings_cache: dict[str, str] = {}  # code -> uuid
     classrooms_cache: dict[tuple[str, str], str] = {}  # (code, room) -> uuid
-    unknown_buildings: set[str] = set()
     schedule_batch: list[dict] = []
     inserted_count = 0
     skipped_count = 0
@@ -226,12 +229,6 @@ def process_sections(
             skipped_count += 1
             continue
 
-        # Skip unknown buildings
-        if building_code not in BUILDING_DATA:
-            unknown_buildings.add(building_code)
-            skipped_count += 1
-            continue
-
         if dry_run:
             # Still validate parsing works
             try:
@@ -252,18 +249,12 @@ def process_sections(
 
         # --- Database writes below ---
 
-        # Upsert building
+        # Upsert building (only code - name/coords added manually in Supabase)
         if building_code not in buildings_cache:
-            name, lat, lon = BUILDING_DATA[building_code]
             result = (
                 supabase_client.table("buildings")
                 .upsert(
-                    {
-                        "code": building_code,
-                        "name": name,
-                        "latitude": lat,
-                        "longitude": lon,
-                    },
+                    {"code": building_code},
                     on_conflict="code",
                 )
                 .execute()
@@ -327,7 +318,7 @@ def process_sections(
     if schedule_batch and not dry_run:
         supabase_client.table("class_schedules").insert(schedule_batch).execute()
 
-    return inserted_count, skipped_count, unknown_buildings
+    return inserted_count, skipped_count
 
 
 def main():
@@ -396,7 +387,7 @@ def main():
                 buildings_seen.add(code)
                 rooms_seen.add((code, room))
 
-    inserted, skipped, unknown = process_sections(
+    inserted, skipped = process_sections(
         supabase_client, all_sections, dry_run=args.dry_run
     )
 
@@ -405,15 +396,9 @@ def main():
     print(f"  Sections skipped (online/TBA/unknown): {skipped}")
 
     if args.dry_run:
-        known = {c for c in buildings_seen if c in BUILDING_DATA}
-        print(f"  Unique buildings (known): {len(known)}")
+        print(f"  Unique buildings: {len(buildings_seen)}")
         print(f"  Unique classrooms: {len(rooms_seen)}")
 
-    if unknown:
-        print(f"\n  Unknown building codes ({len(unknown)}):")
-        for code in sorted(unknown):
-            print(f"    - {code}")
-        print("  Add these to building_coords.py before running without --dry-run")
 
 
 if __name__ == "__main__":
