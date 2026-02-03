@@ -120,7 +120,7 @@ def extract_floor(room_number: str) -> int | None:
 
 
 def get_subject_urls() -> list[str]:
-    """Fetch the subject index page and return all subject page URLs."""
+    """Parse the main schedule page and grab all of the subject URLs"""
     resp = requests.get(BASE_URL + "index.html")
     resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -142,8 +142,16 @@ def get_subject_urls() -> list[str]:
 
 
 def parse_subject_page(html: str) -> list[dict]:
-    """Parse a subject page and return a list of section dicts."""
-    soup = BeautifulSoup(html, "html.parser")
+    """Parse an individual subject page and return a list of dicts.
+    Each dict contains:
+    - course_code: "CECS 491"
+    - course_title: "Senior Design Project"
+    - days: "MWF"
+    - time: "2:30-3:45PM"
+    - location: "ECS-413"
+    - instructor: "Dr. Smith"
+    """
+    soup = BeautifulSoup(html, "html.parser") # take the html and convert it to a tree structure that we can navigate and search
     sections = []
 
     for course_block in soup.find_all("div", class_="courseBlock"):
@@ -184,14 +192,12 @@ def parse_subject_page(html: str) -> list[dict]:
                         "instructor": instructor,
                     }
                 )
-
     return sections
 
 
-def process_sections(
-    supabase_client, sections: list[dict], dry_run: bool = False
-) -> tuple[int, int]:
-    """Process parsed sections: upsert buildings/classrooms, insert schedules.
+def process_sections(supabase_client, sections: list[dict], dry_run: bool = False) -> tuple[int, int]:
+    """
+    LAST STEP: Process the parsed sections and insert them into the database.
 
     Returns (inserted_count, skipped_count).
     """
@@ -344,13 +350,11 @@ def main():
 
         supabase_client = create_client(url, key)
 
-        # Clear existing schedules for this semester
-        print(f"Clearing existing schedules for {SEMESTER}...")
-        supabase_client.table("class_schedules").delete().eq(
-            "semester", SEMESTER
-        ).execute()
+        # Clear all existing schedules
+        print(f"Clearing all existing schedules...")
+        supabase_client.table("class_schedules").delete().gte("created_at", "1970-01-01").execute()
 
-    # Fetch all subject page URLs
+    # Fetch all subject URLs from base URL (SEM_2025/By_Subject)
     print("Fetching subject index...")
     subject_urls = get_subject_urls()
     print(f"Found {len(subject_urls)} subject pages\n")
@@ -372,21 +376,10 @@ def main():
 
     print(f"\nParsed {len(all_sections)} total sections")
 
-    # Process and insert
     mode = "DRY RUN" if args.dry_run else "Inserting"
     print(f"\n{mode}...")
 
-    # Collect unique buildings/rooms for dry-run stats
-    buildings_seen: set[str] = set()
-    rooms_seen: set[tuple[str, str]] = set()
-    if args.dry_run:
-        for s in all_sections:
-            loc = s["location"]
-            if loc.upper() not in SKIP_LOCATIONS and "-" in loc:
-                code, room = loc.split("-", 1)
-                buildings_seen.add(code)
-                rooms_seen.add((code, room))
-
+    # Process the parsed sections and insert them into supabase
     inserted, skipped = process_sections(
         supabase_client, all_sections, dry_run=args.dry_run
     )
@@ -395,11 +388,4 @@ def main():
     print(f"  Schedule rows {'would insert' if args.dry_run else 'inserted'}: {inserted}")
     print(f"  Sections skipped (online/TBA/unknown): {skipped}")
 
-    if args.dry_run:
-        print(f"  Unique buildings: {len(buildings_seen)}")
-        print(f"  Unique classrooms: {len(rooms_seen)}")
-
-
-
-if __name__ == "__main__":
-    main()
+main()
