@@ -228,6 +228,20 @@ export function calculateAvailability(
     };
   }
 
+  // If room has no classes today, it's likely locked
+  if (schedules.length === 0) {
+    return {
+      classroom,
+      isAvailable: false,
+      isBuildingOpen: buildingStatus.isOpen,
+      status: 'closed',
+      nextClassStartsAt: null,
+      currentClassEndsAt: null,
+      minutesUntilNextClass: null,
+      statusText: 'No classes today',
+    };
+  }
+
   // Find current class and next class
   let currentClass: ClassSchedule | null = null;
   let nextClass: ClassSchedule | null = null;
@@ -302,7 +316,10 @@ export function calculateAvailability(
     };
   }
 
-  // No more classes today
+  // No more classes today - free until building closes
+  const minutesUntilClose = Math.floor(
+    (buildingStatus.closesAt.getTime() - now.getTime()) / 60000
+  );
   return {
     classroom,
     isAvailable: true,
@@ -311,7 +328,7 @@ export function calculateAvailability(
     nextClassStartsAt: null,
     currentClassEndsAt: null,
     minutesUntilNextClass: null,
-    statusText: 'Free all day',
+    statusText: formatFreeUntilWithDuration(buildingStatus.closesAt, minutesUntilClose),
   };
 }
 
