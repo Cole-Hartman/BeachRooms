@@ -25,7 +25,7 @@ export default function HomeScreen() {
   const iconColor = useThemeColor({}, 'icon');
   const textColor = useThemeColor({}, 'text');
 
-  const { availableRooms, occupiedRooms, isLoading, error, refetch } = useClassrooms();
+  const { availableRooms, openingSoonRooms, occupiedRooms, isLoading, error, refetch } = useClassrooms();
   const [showAllOccupied, setShowAllOccupied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,6 +41,17 @@ export default function HomeScreen() {
         `${room.classroom.building.code} ${room.classroom.room_number}`.toLowerCase().includes(query)
     );
   }, [availableRooms, searchQuery]);
+
+  const filteredOpeningSoon = useMemo(() => {
+    if (!searchQuery.trim()) return openingSoonRooms;
+    const query = searchQuery.toLowerCase();
+    return openingSoonRooms.filter(
+      (room) =>
+        room.classroom.building.code.toLowerCase().includes(query) ||
+        room.classroom.room_number.toLowerCase().includes(query) ||
+        `${room.classroom.building.code} ${room.classroom.room_number}`.toLowerCase().includes(query)
+    );
+  }, [openingSoonRooms, searchQuery]);
 
   const filteredOccupied = useMemo(() => {
     if (!searchQuery.trim()) return occupiedRooms;
@@ -121,6 +132,22 @@ export default function HomeScreen() {
           filteredAvailable.map((room) => (
             <RoomCard key={room.classroom.id} availability={room} />
           ))
+        )}
+
+        {/* Opening Soon Section */}
+        {filteredOpeningSoon.length > 0 && (
+          <>
+            <View style={[styles.sectionHeader, styles.openingSoonHeader]}>
+              <ThemedText type="subtitle">Opening Soon</ThemedText>
+              <ThemedText style={[styles.sectionCount, { color: iconColor }]}>
+                {filteredOpeningSoon.length} rooms
+              </ThemedText>
+            </View>
+
+            {filteredOpeningSoon.map((room) => (
+              <RoomCard key={room.classroom.id} availability={room} />
+            ))}
+          </>
         )}
 
         {/* Occupied Rooms Section */}
@@ -286,6 +313,9 @@ const styles = StyleSheet.create({
   },
   sectionCount: {
     fontSize: 14,
+  },
+  openingSoonHeader: {
+    marginTop: 24,
   },
   occupiedHeader: {
     marginTop: 24,

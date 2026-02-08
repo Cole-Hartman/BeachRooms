@@ -8,9 +8,12 @@ import type {
   ClassroomAvailability,
 } from '@/types/database';
 
+const OPENING_SOON_MINUTES = 30;
+
 interface UseClassroomsResult {
   classrooms: ClassroomAvailability[];
   availableRooms: ClassroomAvailability[];
+  openingSoonRooms: ClassroomAvailability[];
   occupiedRooms: ClassroomAvailability[];
   isLoading: boolean;
   error: string | null;
@@ -19,6 +22,7 @@ interface UseClassroomsResult {
 
 export function useClassrooms(): UseClassroomsResult {
   const [classrooms, setClassrooms] = useState<ClassroomAvailability[]>([]);
+  const [testTime, setTestTime] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,6 +113,7 @@ export function useClassrooms(): UseClassroomsResult {
       });
 
       setClassrooms(classroomsWithAvailability);
+      setTestTime(now);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch classrooms';
       setError(message);
@@ -122,11 +127,42 @@ export function useClassrooms(): UseClassroomsResult {
   }, [fetchClassrooms]);
 
   const availableRooms = classrooms.filter((c) => c.isAvailable);
-  const occupiedRooms = classrooms.filter((c) => !c.isAvailable);
+
+  // Rooms opening soon: currently in use but class ends within 30 minutes
+  const now = testTime || new Date();
+  const inUseRooms = classrooms.filter((c) => c.status === 'in_use');
+  console.log(`[Opening Soon] Test time: ${now.toISOString()}`);
+  console.log(`[Opening Soon] In-use rooms: ${inUseRooms.length}`);
+  inUseRooms.slice(0, 5).forEach((c) => {
+    const minutesUntilFree = c.currentClassEndsAt
+      ? Math.floor((c.currentClassEndsAt.getTime() - now.getTime()) / 60000)
+      : null;
+    console.log(
+      `  ${c.classroom.building.code} ${c.classroom.room_number}: ends at ${c.currentClassEndsAt?.toISOString()}, minutes until free: ${minutesUntilFree}`
+    );
+  });
+
+  const openingSoonRooms = classrooms.filter((c) => {
+    if (c.isAvailable || c.status !== 'in_use' || !c.currentClassEndsAt) {
+      return false;
+    }
+    const minutesUntilFree = Math.floor(
+      (c.currentClassEndsAt.getTime() - now.getTime()) / 60000
+    );
+    return minutesUntilFree > 0 && minutesUntilFree <= OPENING_SOON_MINUTES;
+  });
+  console.log(`[Opening Soon] Found ${openingSoonRooms.length} opening soon rooms`);
+
+  // Occupied rooms excludes those opening soon
+  const openingSoonIds = new Set(openingSoonRooms.map((c) => c.classroom.id));
+  const occupiedRooms = classrooms.filter(
+    (c) => !c.isAvailable && !openingSoonIds.has(c.classroom.id)
+  );
 
   return {
     classrooms,
     availableRooms,
+    openingSoonRooms,
     occupiedRooms,
     isLoading,
     error,
