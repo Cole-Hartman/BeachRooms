@@ -167,7 +167,10 @@ export default function HomeScreen() {
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <ThemedText type="title">BeachRooms</ThemedText>
+        <ThemedText type="title">
+          <ThemedText type="title" style={{ color: '#EBA920' }}>Beach</ThemedText>
+          Rooms
+        </ThemedText>
         <ThemedText style={styles.subtitle}>Find empty classrooms at CSULB</ThemedText>
       </View>
 
@@ -258,7 +261,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   availableCard: {
-    backgroundColor: '#4a9eba',
+    backgroundColor: '#EBA920',
   },
   totalCard: {
     backgroundColor: '#5a6268',
