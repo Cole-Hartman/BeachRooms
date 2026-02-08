@@ -81,17 +81,66 @@ function formatFreeTime(minutes: number): string {
   return `Free for ${hours}h ${remainingMinutes}m`;
 }
 
+/**
+ * Format duration in short form (e.g., "2h" or "1h 30m")
+ */
+function formatDuration(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (remainingMinutes === 0) {
+    return `${hours}h`;
+  }
+
+  return `${hours}h ${remainingMinutes}m`;
+}
+
+/**
+ * Format "Free at X for Y" message
+ */
+function formatFreeAtWithDuration(time: Date, durationMinutes: number): string {
+  const hours = time.getHours();
+  const minutes = time.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  const displayMinutes = minutes.toString().padStart(2, '0');
+
+  return `Free at ${displayHours}:${displayMinutes} ${ampm} for ${formatDuration(durationMinutes)}`;
+}
+
+/**
+ * Format "Free until X (Y)" message for currently available rooms
+ */
+function formatFreeUntilWithDuration(untilTime: Date, durationMinutes: number): string {
+  const hours = untilTime.getHours();
+  const minutes = untilTime.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  const displayMinutes = minutes.toString().padStart(2, '0');
+
+  return `Free until ${displayHours}:${displayMinutes} ${ampm} (${formatDuration(durationMinutes)})`;
+}
+
 const MIN_USABLE_MINUTES = 30;
+
+interface UsableWindow {
+  startsAt: Date;
+  durationMinutes: number;
+}
 
 /**
  * Find the next time when the room will be free for >= 30 minutes.
- * Returns the Date when the usable window starts, or null if free rest of day.
+ * Returns the start time and duration of the usable window, or null if none.
  */
-function findNextUsableTime(
+function findNextUsableWindow(
   schedules: ClassSchedule[],
   fromTime: Date,
   buildingCloses: Date
-): Date | null {
+): UsableWindow | null {
   // Sort future schedules by start time
   const futureSchedules = schedules
     .map((s) => ({
@@ -108,8 +157,8 @@ function findNextUsableTime(
     const gapMinutes = Math.floor((schedule.start.getTime() - checkTime.getTime()) / 60000);
 
     if (gapMinutes >= MIN_USABLE_MINUTES) {
-      // Found a usable gap starting at checkTime
-      return checkTime;
+      // Found a usable gap starting at checkTime, ending at next class
+      return { startsAt: checkTime, durationMinutes: gapMinutes };
     }
 
     // Gap too short, move checkTime to after this class
@@ -119,7 +168,7 @@ function findNextUsableTime(
   // Check if there's usable time after all classes (before building closes)
   const remainingMinutes = Math.floor((buildingCloses.getTime() - checkTime.getTime()) / 60000);
   if (remainingMinutes >= MIN_USABLE_MINUTES) {
-    return checkTime;
+    return { startsAt: checkTime, durationMinutes: remainingMinutes };
   }
 
   return null; // No usable time today
@@ -201,7 +250,7 @@ export function calculateAvailability(
     const endsAt = parseTimeToday(currentClass.end_time, now);
 
     // Find when room will actually be usable (>= 30 min gap)
-    const nextUsableTime = findNextUsableTime(schedules, endsAt, buildingStatus.closesAt);
+    const nextWindow = findNextUsableWindow(schedules, endsAt, buildingStatus.closesAt);
 
     return {
       classroom,
@@ -211,8 +260,8 @@ export function calculateAvailability(
       nextClassStartsAt: nextClass ? parseTimeToday(nextClass.start_time, now) : null,
       currentClassEndsAt: endsAt,
       minutesUntilNextClass: null,
-      statusText: nextUsableTime
-        ? formatTimeUntil(nextUsableTime, 'Free at')
+      statusText: nextWindow
+        ? formatFreeAtWithDuration(nextWindow.startsAt, nextWindow.durationMinutes)
         : 'Busy all day',
     };
   }
@@ -225,7 +274,7 @@ export function calculateAvailability(
     // Only consider available if >= 30 minutes until next class
     if (minutesUntil < MIN_USABLE_MINUTES) {
       // Find when room will actually be usable
-      const nextUsableTime = findNextUsableTime(schedules, now, buildingStatus.closesAt);
+      const nextWindow = findNextUsableWindow(schedules, now, buildingStatus.closesAt);
 
       return {
         classroom,
@@ -235,8 +284,8 @@ export function calculateAvailability(
         nextClassStartsAt: nextStartTime,
         currentClassEndsAt: null,
         minutesUntilNextClass: minutesUntil,
-        statusText: nextUsableTime
-          ? formatTimeUntil(nextUsableTime, 'Free at')
+        statusText: nextWindow
+          ? formatFreeAtWithDuration(nextWindow.startsAt, nextWindow.durationMinutes)
           : 'Busy all day',
       };
     }
@@ -249,7 +298,7 @@ export function calculateAvailability(
       nextClassStartsAt: nextStartTime,
       currentClassEndsAt: null,
       minutesUntilNextClass: minutesUntil,
-      statusText: formatFreeTime(minutesUntil),
+      statusText: formatFreeUntilWithDuration(nextStartTime, minutesUntil),
     };
   }
 
