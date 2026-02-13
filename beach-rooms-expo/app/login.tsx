@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { AppleSignInButton } from "@/components/social-auth-buttons/apple/apple-sign-in-button";
 import { GoogleSignInButton } from "@/components/social-auth-buttons/google/google-sign-in-button";
+import { EmailSignIn } from "@/components/social-auth-buttons/email-sign-in";
 import { Colors } from "@/constants/theme";
 
 export default function LoginScreen() {
@@ -13,13 +13,16 @@ export default function LoginScreen() {
           <Text style={styles.tagline}>Find your study space at CSULB</Text>
         </View>
 
-        <View style={styles.authButtons}>
-          <View style={styles.buttonWrapper}>
-            <AppleSignInButton />
+        <View style={styles.authSection}>
+          <EmailSignIn />
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
           </View>
-          <View style={styles.buttonWrapper}>
-            <GoogleSignInButton />
-          </View>
+
+          <GoogleSignInButton />
         </View>
 
         <Text style={styles.disclaimer}>
@@ -43,7 +46,7 @@ const styles = StyleSheet.create({
   },
   branding: {
     alignItems: "center",
-    marginBottom: 64,
+    marginBottom: 48,
   },
   logo: {
     fontSize: 42,
@@ -56,12 +59,23 @@ const styles = StyleSheet.create({
     color: Colors.dark.text,
     opacity: 0.8,
   },
-  authButtons: {
+  authSection: {
     width: "100%",
     gap: 16,
   },
-  buttonWrapper: {
-    width: "100%",
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#444",
+  },
+  dividerText: {
+    color: "#888",
+    fontSize: 14,
   },
   disclaimer: {
     marginTop: 32,
