@@ -1,7 +1,7 @@
 import "react-native-url-polyfill/auto";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import { Platform } from "react-native";
+import * as SecureStore from "expo-secure-store";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
@@ -12,31 +12,38 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// Create a platform-aware storage adapter
-// Use localStorage for web, AsyncStorage for native platforms
+// SecureStore adapter for native platforms
+const secureStoreAdapter = {
+  getItem: (key: string) => SecureStore.getItemAsync(key),
+  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+};
+
+// localStorage adapter for web
+const localStorageAdapter = {
+  getItem: (key: string) => {
+    if (typeof window !== "undefined") {
+      return Promise.resolve(window.localStorage.getItem(key));
+    }
+    return Promise.resolve(null);
+  },
+  setItem: (key: string, value: string) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(key, value);
+    }
+    return Promise.resolve();
+  },
+  removeItem: (key: string) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(key);
+    }
+    return Promise.resolve();
+  },
+};
+
+// Use SecureStore for native (secure storage), localStorage for web
 const storageAdapter =
-  Platform.OS === "web"
-    ? {
-        getItem: (key: string) => {
-          if (typeof window !== "undefined") {
-            return Promise.resolve(window.localStorage.getItem(key));
-          }
-          return Promise.resolve(null);
-        },
-        setItem: (key: string, value: string) => {
-          if (typeof window !== "undefined") {
-            window.localStorage.setItem(key, value);
-          }
-          return Promise.resolve();
-        },
-        removeItem: (key: string) => {
-          if (typeof window !== "undefined") {
-            window.localStorage.removeItem(key);
-          }
-          return Promise.resolve();
-        },
-      }
-    : AsyncStorage;
+  Platform.OS === "web" ? localStorageAdapter : secureStoreAdapter;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
