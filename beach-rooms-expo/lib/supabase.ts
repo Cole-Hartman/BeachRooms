@@ -50,6 +50,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: storageAdapter,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // Enable URL session detection on web for OAuth callback
+    detectSessionInUrl: Platform.OS === "web",
   },
 });
