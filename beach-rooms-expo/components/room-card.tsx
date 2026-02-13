@@ -1,14 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getStatusColor, getStatusLabel } from '@/lib/availability';
+import { useRoomDetail } from '@/providers/room-detail-provider';
 import type { ClassroomAvailability } from '@/types/database';
 
 interface RoomCardProps {
   availability: ClassroomAvailability;
-  onPress?: () => void;
 }
 
 const AMENITY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -20,9 +21,11 @@ const AMENITY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   microphone: 'mic-outline',
 };
 
-export function RoomCard({ availability, onPress }: RoomCardProps) {
+export function RoomCard({ availability }: RoomCardProps) {
   const { classroom, status, statusText } = availability;
   const { building } = classroom;
+  const { setSelectedRoom } = useRoomDetail();
+  const router = useRouter();
 
   const iconColor = useThemeColor({}, 'icon');
   const statusColor = getStatusColor(status);
@@ -32,7 +35,14 @@ export function RoomCard({ availability, onPress }: RoomCardProps) {
   const floorText = classroom.floor ? `Floor ${classroom.floor}` : null;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => {
+        setSelectedRoom(availability);
+        router.push('/room-detail');
+      }}
+      activeOpacity={0.7}
+    >
       <View style={styles.mainContent}>
         {/* Room Info */}
         <View style={styles.roomInfo}>

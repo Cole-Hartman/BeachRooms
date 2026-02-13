@@ -10,6 +10,7 @@ interface UseFavoritesResult {
   error: string | null;
   addFavorite: (classroomId: string) => Promise<void>;
   removeFavorite: (classroomId: string) => Promise<void>;
+  isFavorite: (classroomId: string) => boolean;
   refetch: () => Promise<void>;
 }
 
@@ -104,12 +105,20 @@ export function useFavorites(): UseFavoritesResult {
     [user, fetchFavorites]
   );
 
+  const isFavorite = useCallback(
+    (classroomId: string) => {
+      return favorites.some((fav) => fav.classroom_id === classroomId);
+    },
+    [favorites]
+  );
+
   return {
     favorites,
     isLoading,
     error,
     addFavorite,
     removeFavorite,
+    isFavorite,
     refetch: fetchFavorites,
   };
 }

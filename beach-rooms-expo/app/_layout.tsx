@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
+import { RoomDetailProvider } from '@/providers/room-detail-provider';
 import { SplashScreenController } from '@/components/splash-screen-controller';
 
 function RootLayoutNav() {
@@ -28,13 +29,16 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <SplashScreenController />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="login" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal', headerShown: true }} />
-      </Stack>
-      <StatusBar style="auto" />
+      <RoomDetailProvider>
+        <SplashScreenController />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="login" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="room-detail" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal', headerShown: true }} />
+        </Stack>
+        <StatusBar style="auto" />
+      </RoomDetailProvider>
     </ThemeProvider>
   );
 }
