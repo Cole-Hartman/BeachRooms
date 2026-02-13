@@ -55,3 +55,14 @@ export interface ClassroomAvailability {
   minutesUntilNextClass: number | null;
   statusText: string;
 }
+
+export interface Favorite {
+  id: string;
+  user_id: string;
+  classroom_id: string;
+  created_at: string;
+}
+
+export interface FavoriteWithClassroom extends Favorite {
+  classroom: ClassroomWithBuilding;
+}

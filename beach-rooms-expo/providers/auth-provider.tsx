@@ -2,14 +2,21 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
+interface User {
+  id: string;
+  email: string | null;
+}
+
 interface AuthContextType {
   session: Session | null;
+  user: User | null;
   isLoading: boolean;
   isLoggedIn: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
+  user: null,
   isLoading: true,
   isLoggedIn: false,
 });
@@ -35,10 +42,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const user: User | null = session?.user
+    ? {
+        id: session.user.id,
+        email: session.user.email ?? null,
+      }
+    : null;
+
   return (
     <AuthContext.Provider
       value={{
         session,
+        user,
         isLoading,
         isLoggedIn: !!session,
       }}
