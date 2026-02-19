@@ -1,7 +1,7 @@
 ---
-name: Beach Rooms TASK Template
+name: Beach Rooms Issue Template
 about: Describe this issue template's purpose here.
-title: "[TASK] (task name here)"
+title: "(task name here)"
 labels: ''
 assignees: ''
 
