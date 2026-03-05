@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import MapboxGL from '@rnmapbox/maps';
+import MapboxGL, { MapView } from '@rnmapbox/maps';
 import type { FeatureCollection, Point } from 'geojson';
 
 import {
@@ -69,6 +69,20 @@ export function CampusMap({ buildingPins, onBuildingPress }: CampusMapProps) {
     })),
   }), [buildingPins]);
 
+  const mapRef = useRef<MapView>(null);
+
+  const hidePOILabels = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    try {
+      map.setSourceVisibility(false, 'composite', 'poi_label');
+      map.setSourceVisibility(false, 'composite', 'natural_label');
+      map.setSourceVisibility(false, 'composite', 'transit_label');
+    } catch (err) {
+      console.warn('Failed to hide POI labels:', err);
+    }
+  };
+
   const handlePress = (event: any) => {
     const feature = event?.features?.[0];
     if (feature?.properties?.id) {
@@ -79,6 +93,7 @@ export function CampusMap({ buildingPins, onBuildingPress }: CampusMapProps) {
   return (
     <View style={styles.container}>
       <MapboxGL.MapView
+        ref={mapRef}
         style={styles.map}
         styleURL={MapboxGL.StyleURL.Street}
         logoEnabled={false}
@@ -86,6 +101,7 @@ export function CampusMap({ buildingPins, onBuildingPress }: CampusMapProps) {
         compassEnabled={false}
         pitchEnabled={true}
         rotateEnabled={true}
+        onDidFinishLoadingMap={hidePOILabels}
       >
         <MapboxGL.Camera
           defaultSettings={{
@@ -117,48 +133,78 @@ export function CampusMap({ buildingPins, onBuildingPress }: CampusMapProps) {
           }}
         />
 
-        <MapboxGL.ShapeSource
-          id="building-pins"
-          shape={geojson}
-          onPress={handlePress}
-        >
-          {/* Pin circles */}
-          <MapboxGL.CircleLayer
-            id="building-circles"
-            style={{
-              circleRadius: 12,
-              circleColor: [
-                'case',
-                ['get', 'hasAvailableRoom'],
-                '#28a745',
-                '#dc3545',
-              ],
-              circleStrokeWidth: 3,
-              circleStrokeColor: '#ffffff',
-            }}
-          />
+          <MapboxGL.ShapeSource
+              id="building-pins"
+              shape={geojson}
+              onPress={handlePress}
+          >
+              {/* Glow ring */}
+              <MapboxGL.CircleLayer
+                  id="building-glow"
+                  style={{
+                      // Interpolate radius based on zoom level
+                      circleRadius: [
+                          'interpolate',
+                          ['linear'],
+                          ['zoom'],
+                          13, 4,  // At zoom level 13 (zoomed out), radius is 4
+                          18, 12, // At zoom level 18 (zoomed in), radius is 12
+                      ],
+                      circleBlur: 1.5,
+                      circleOpacity: 0.6,
+                      circleColor: [
+                          'case',
+                          ['get', 'hasAvailableRoom'],
+                          '#22c55e',
+                          '#ef4444',
+                      ],
+                  }}
+              />
 
-          {/* Building code labels */}
-          <MapboxGL.SymbolLayer
-            id="building-labels"
-            style={{
-              textField: ['get', 'code'],
-              textSize: 11,
-              textFont: ['DIN Pro Bold'],
-              textColor: [
-                'case',
-                ['get', 'hasAvailableRoom'],
-                '#28a745',
-                '#dc3545',
-              ],
-              textHaloColor: '#ffffff',
-              textHaloWidth: 1.5,
-              textOffset: [0, 1.8],
-              textAllowOverlap: true,
-              iconAllowOverlap: true,
-            }}
-          />
-        </MapboxGL.ShapeSource>
+              {/* Solid dot */}
+              <MapboxGL.CircleLayer
+                  id="building-dot"
+                  style={{
+                      // Interpolate radius based on zoom level
+                      circleRadius: [
+                          'interpolate',
+                          ['linear'],
+                          ['zoom'],
+                          13, 2,   // At zoom level 13, radius is 2
+                          18, 4.5, // At zoom level 18, radius is 4.5
+                      ],
+                      circleColor: [
+                          'case',
+                          ['get', 'hasAvailableRoom'],
+                          '#4ade80',
+                          '#ef4444',
+                      ],
+                  }}
+              />
+
+              {/* Building code labels */}
+              <MapboxGL.SymbolLayer
+                  id="building-labels"
+                  style={{
+                      textField: ['get', 'code'],
+                      // Interpolate text size based on zoom level
+                      textSize: [
+                          'interpolate',
+                          ['linear'],
+                          ['zoom'],
+                          13, 8, // At zoom level 13 (zoomed out), font size is 10
+                          18, 14, // At zoom level 18 (zoomed in), font size is 14
+                      ],
+                      textFont: ['DIN Pro Bold'],
+                      textColor: '#2E3135',
+                      textHaloColor: '#ffffff',
+                      textHaloWidth: 1.2,
+                      textOffset: [0, 1.5],
+                      textAllowOverlap: true,
+                      iconAllowOverlap: true,
+                  }}
+              />
+          </MapboxGL.ShapeSource>
       </MapboxGL.MapView>
     </View>
   );
