@@ -65,13 +65,13 @@ export function CollapsibleMapContainer({
         <Animated.View style={[styles.mapContent, animatedMapOpacity]}>
           {children}
         </Animated.View>
-      </Animated.View>
 
-      <GestureDetector gesture={panGesture}>
-        <Animated.View style={styles.handleContainer}>
-          <View style={[styles.handle, { backgroundColor: borderColor }]} />
-        </Animated.View>
-      </GestureDetector>
+        <GestureDetector gesture={panGesture}>
+          <Animated.View style={styles.handleContainer}>
+            <View style={[styles.handle, { backgroundColor: borderColor }]} />
+          </Animated.View>
+        </GestureDetector>
+      </Animated.View>
     </View>
   );
 }
@@ -87,7 +87,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   handleContainer: {
-    height: 28,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -95,6 +99,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 5,
     borderRadius: 3,
-    opacity: 0.6,
+    opacity: 0.7,
   },
 });

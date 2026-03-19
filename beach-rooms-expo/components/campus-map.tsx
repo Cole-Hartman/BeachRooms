@@ -17,10 +17,11 @@ MapboxGL.setAccessToken(MAPBOX_ACCESS_TOKEN);
 
 interface CampusMapProps {
   buildingPins: BuildingPin[];
+  focusBuildingId?: string | null;
   onBuildingPress: (buildingId: string) => void;
 }
 
-export function CampusMap({ buildingPins, onBuildingPress }: CampusMapProps) {
+export function CampusMap({ buildingPins, focusBuildingId, onBuildingPress }: CampusMapProps) {
   // Download offline tile pack for CSULB campus
   useEffect(() => {
     const downloadOfflinePack = async () => {
@@ -74,6 +75,19 @@ export function CampusMap({ buildingPins, onBuildingPress }: CampusMapProps) {
   }), [buildingPins]);
 
   const mapRef = useRef<MapView>(null);
+  const cameraRef = useRef<MapboxGL.Camera>(null);
+
+  useEffect(() => {
+    if (!focusBuildingId || !cameraRef.current) return;
+    const pin = buildingPins.find((p) => p.id === focusBuildingId);
+    if (pin) {
+      cameraRef.current.setCamera({
+        centerCoordinate: [pin.longitude, pin.latitude],
+        zoomLevel: 17,
+        animationDuration: 800,
+      });
+    }
+  }, [focusBuildingId, buildingPins]);
 
   const hidePOILabels = () => {
     const map = mapRef.current;
@@ -109,6 +123,7 @@ export function CampusMap({ buildingPins, onBuildingPress }: CampusMapProps) {
         onDidFinishLoadingMap={hidePOILabels}
       >
         <MapboxGL.Camera
+          ref={cameraRef}
           defaultSettings={{
             centerCoordinate: CSULB_CENTER,
             zoomLevel: CSULB_DEFAULT_ZOOM,

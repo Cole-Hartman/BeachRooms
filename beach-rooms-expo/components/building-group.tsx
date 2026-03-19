@@ -1,0 +1,311 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+import { ThemedText } from '@/components/themed-text';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import { useRoomDetail } from '@/providers/room-detail-provider';
+import type { ClassroomAvailability } from '@/types/database';
+
+const pinGreen = require('@/assets/images/pin-green.png');
+const pinRed = require('@/assets/images/pin-red.png');
+
+// Match the map pin colors
+const PIN_GREEN = '#28a745';
+const PIN_RED = '#dc3545';
+
+function formatTime(date: Date): string {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  const displayMinutes = minutes.toString().padStart(2, '0');
+  return `${displayHours}:${displayMinutes} ${ampm}`;
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+interface BuildingGroupProps {
+  buildingName: string;
+  buildingCode: string;
+  available: ClassroomAvailability[];
+  occupied: ClassroomAvailability[];
+  forceExpanded?: boolean;
+  onExpand?: () => void;
+  onLayout?: (e: { nativeEvent: { layout: { y: number } } }) => void;
+}
+
+export function BuildingGroup({
+  buildingName,
+  buildingCode,
+  available,
+  occupied,
+  forceExpanded,
+  onExpand,
+  onLayout,
+}: BuildingGroupProps) {
+  const iconColor = useThemeColor({}, 'icon');
+  const buildingNameColor = useThemeColor(
+    { light: 'rgba(0,0,0,0.7)', dark: 'rgba(255,255,255,0.85)' },
+    'text'
+  );
+  const dividerColor = useThemeColor(
+    { light: 'rgba(0,0,0,0.15)', dark: 'rgba(255,255,255,0.15)' },
+    'text'
+  );
+
+  const totalRooms = available.length + occupied.length;
+  const hasAvailable = available.length > 0;
+  const badgeBg = hasAvailable ? '#e6f9ec' : '#fde8ea';
+  const badgeBorder = hasAvailable ? '#7ee8a0' : '#f5a3ab';
+  const badgeText = hasAvailable ? '#1a9e3f' : '#c9303a';
+  const [expanded, setExpanded] = useState(false);
+  const [availableExpanded, setAvailableExpanded] = useState(true);
+  const [occupiedExpanded, setOccupiedExpanded] = useState(false);
+
+  useEffect(() => {
+    if (forceExpanded) setExpanded(true);
+  }, [forceExpanded]);
+
+  return (
+    <View style={[styles.container, { borderBottomColor: dividerColor }]} onLayout={onLayout}>
+      {/* Building Header */}
+      <TouchableOpacity
+        style={styles.buildingHeader}
+        onPress={() => {
+          const next = !expanded;
+          setExpanded(next);
+          if (next && onExpand) onExpand();
+        }}
+        activeOpacity={0.7}
+      >
+        <View style={styles.buildingHeaderLeft}>
+          <ThemedText type="default" style={[styles.buildingName, { color: buildingNameColor }]}>
+            {buildingName}
+          </ThemedText>
+        </View>
+        <View style={styles.buildingHeaderRight}>
+          <View style={[styles.countBadge, { backgroundColor: badgeBg, borderColor: badgeBorder }]}>
+            <ThemedText style={[styles.countText, { color: badgeText }]}>
+              {available.length}/{totalRooms}
+            </ThemedText>
+          </View>
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={14}
+            color={buildingNameColor}
+          />
+        </View>
+      </TouchableOpacity>
+
+      {expanded && (
+        <View>
+          {/* Available Section */}
+          {available.length > 0 && (
+            <View>
+              <TouchableOpacity
+                style={styles.statusHeader}
+                onPress={() => setAvailableExpanded(!availableExpanded)}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={[styles.statusLabel, { color: buildingNameColor }]}>
+                  Available
+                </ThemedText>
+                <Ionicons
+                  name={availableExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color={buildingNameColor}
+                />
+              </TouchableOpacity>
+
+              {availableExpanded &&
+                available.map((room) => (
+                  <RoomRow key={room.classroom.id} room={room} type="available" buildingCode={buildingCode} dividerColor={dividerColor} />
+                ))}
+            </View>
+          )}
+
+          {/* Occupied Section */}
+          {occupied.length > 0 && (
+            <View>
+              <TouchableOpacity
+                style={styles.statusHeader}
+                onPress={() => setOccupiedExpanded(!occupiedExpanded)}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={[styles.statusLabel, { color: buildingNameColor }]}>
+                  Occupied
+                </ThemedText>
+                <Ionicons
+                  name={occupiedExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color={buildingNameColor}
+                />
+              </TouchableOpacity>
+
+              {occupiedExpanded &&
+                occupied.map((room) => (
+                  <RoomRow key={room.classroom.id} room={room} type="occupied" buildingCode={buildingCode} dividerColor={dividerColor} />
+                ))}
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function RoomStatusText({ room, type }: { room: ClassroomAvailability; type: 'available' | 'occupied' }) {
+  const iconColor = useThemeColor({}, 'icon');
+
+  // Available rooms: parse "Free until H:MM AM/PM (Xh Ym)" from statusText as fallback
+  if (type === 'available') {
+    if (room.minutesUntilNextClass != null && room.nextClassStartsAt) {
+      return (
+        <Text style={[styles.roomStatus, { color: iconColor }]}>
+          Available for <Text style={styles.roomStatusBold}>{formatDuration(room.minutesUntilNextClass)}</Text> until <Text style={styles.roomStatusBold}>{formatTime(room.nextClassStartsAt)}</Text>
+        </Text>
+      );
+    }
+
+    // "Free until X:XX AM/PM (Xh Ym)" — parse duration and time
+    const match = room.statusText.match(/Free until (.+?\s[AP]M)\s*\((.+?)\)/);
+    if (match) {
+      return (
+        <Text style={[styles.roomStatus, { color: iconColor }]}>
+          Available for <Text style={styles.roomStatusBold}>{match[2]}</Text> until <Text style={styles.roomStatusBold}>{match[1]}</Text>
+        </Text>
+      );
+    }
+  }
+
+  return (
+    <Text style={[styles.roomStatus, { color: iconColor }]}>
+      {room.statusText}
+    </Text>
+  );
+}
+
+function RoomRow({
+  room,
+  type,
+  buildingCode,
+  dividerColor,
+}: {
+  room: ClassroomAvailability;
+  type: 'available' | 'occupied';
+  buildingCode: string;
+  dividerColor: string;
+}) {
+  const { setSelectedRoom } = useRoomDetail();
+  const router = useRouter();
+  const iconColor = useThemeColor({}, 'icon');
+  const roomNameColor = useThemeColor(
+    { light: 'rgba(0,0,0,0.7)', dark: 'rgba(255,255,255,0.85)' },
+    'text'
+  );
+
+  return (
+    <TouchableOpacity
+      style={[styles.roomRow, { borderBottomColor: dividerColor }]}
+      onPress={() => {
+        setSelectedRoom(room);
+        router.push('/room-detail');
+      }}
+      activeOpacity={0.7}
+    >
+      <Image
+        source={type === 'available' ? pinGreen : pinRed}
+        style={styles.statusDot}
+      />
+      <View style={styles.roomInfo}>
+        <ThemedText style={[styles.roomNumber, { color: roomNameColor }]}>
+          {buildingCode} {room.classroom.room_number}
+        </ThemedText>
+        <RoomStatusText room={room} type={type} />
+      </View>
+      <Ionicons name="chevron-forward" size={14} color={roomNameColor} />
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    borderBottomWidth: 1,
+  },
+  buildingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  buildingHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  buildingName: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+  },
+  buildingHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  countBadge: {
+      minWidth: 37,
+    paddingHorizontal: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  countText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 1,
+  },
+  statusLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  roomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingLeft: 12,
+    borderBottomWidth: 1,
+  },
+  statusDot: {
+    width: 22,
+    height: 22,
+    marginRight: 10,
+  },
+  roomInfo: {
+    flex: 1,
+  },
+  roomNumber: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+  },
+  roomStatus: {
+    fontSize: 13,
+    marginTop: 1,
+  },
+  roomStatusBold: {
+    fontWeight: '700',
+  },
+});

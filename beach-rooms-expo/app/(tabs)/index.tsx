@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -16,26 +16,32 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BuildingGroup } from '@/components/building-group';
 import { CampusMap } from '@/components/campus-map';
 import { CollapsibleMapContainer } from '@/components/collapsible-map-container';
-import { RoomCard } from '@/components/room-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useBuildingPins } from '@/hooks/use-building-pins';
 import { useClassrooms } from '@/hooks/use-classrooms';
+import { useColorSchemeToggle } from '@/hooks/use-color-scheme';
+import { useSettings } from '@/hooks/use-settings';
 import { useThemeColor } from '@/hooks/use-theme-color';
-
-const INITIAL_OCCUPIED_LIMIT = 3;
+import type { ClassroomAvailability } from '@/types/database';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const { colorScheme, setColorScheme } = useColorSchemeToggle();
   const tintColor = useThemeColor({}, 'tint');
   const iconColor = useThemeColor({}, 'icon');
   const textColor = useThemeColor({}, 'text');
   const popoverBg = useThemeColor({ light: '#ffffff', dark: '#1f2123' }, 'background');
   const popoverText = useThemeColor({}, 'text');
   const dividerColor = useThemeColor(
-    { light: 'rgba(0,0,0,0.12)', dark: 'rgba(255,255,255,0.12)' },
+    { light: 'rgba(0,0,0,0.15)', dark: 'rgba(255,255,255,0.15)' },
+    'text'
+  );
+  const strokeColor = useThemeColor(
+    { light: 'rgba(0,0,0,0.2)', dark: 'rgba(255,255,255,0.2)' },
     'text'
   );
   const overlayColor = useThemeColor(
@@ -43,15 +49,24 @@ export default function HomeScreen() {
     'background'
   );
 
-  const { classrooms, availableRooms, openingSoonRooms, occupiedRooms, isLoading, error, refetch } = useClassrooms();
+  const { classrooms, isLoading, error, refetch } = useClassrooms();
   const buildingPins = useBuildingPins(classrooms);
   const scrollViewRef = useRef<ScrollView>(null);
   const buildingYPositions = useRef<Record<string, number>>({});
-  const [showAllOccupied, setShowAllOccupied] = useState(false);
+  const [expandedBuildingId, setExpandedBuildingId] = useState<string | null>(null);
+  const [focusBuildingId, setFocusBuildingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { settings, update: updateSetting, loaded: settingsLoaded } = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [hideMap, setHideMap] = useState(false);
+
+  // Sync persisted dark mode to color scheme on load
+  useEffect(() => {
+    if (settingsLoaded) {
+      setColorScheme(settings.darkMode ? 'dark' : 'light');
+    }
+  }, [settingsLoaded]);
+  const [autoCenterHelpVisible, setAutoCenterHelpVisible] = useState(false);
   const [usageExpanded, setUsageExpanded] = useState(false);
   const [popoverTopRight, setPopoverTopRight] = useState<{ top: number; right: number } | null>(null);
   const settingsButtonRef = useRef<View>(null);
@@ -91,52 +106,60 @@ export default function HomeScreen() {
   ];
 
   const handleBuildingPress = useCallback((buildingId: string) => {
+    setExpandedBuildingId(buildingId);
     const y = buildingYPositions.current[buildingId];
     if (y !== undefined) {
       scrollViewRef.current?.scrollTo({ y, animated: true });
     }
   }, []);
 
-  // Filter rooms based on search query
-  const filteredAvailable = useMemo(() => {
-    if (!searchQuery.trim()) return availableRooms;
-    const query = searchQuery.toLowerCase();
-    return availableRooms.filter(
-      (room) =>
-        room.classroom.building.code.toLowerCase().includes(query) ||
-        (room.classroom.building.name && room.classroom.building.name.toLowerCase().includes(query)) ||
-        room.classroom.room_number.toLowerCase().includes(query) ||
-        `${room.classroom.building.code} ${room.classroom.room_number}`.toLowerCase().includes(query)
-    );
-  }, [availableRooms, searchQuery]);
+  // Filter and group rooms by building
+  const buildingGroups = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const filtered = query
+      ? classrooms.filter(
+          (room) =>
+            room.classroom.building.code.toLowerCase().includes(query) ||
+            (room.classroom.building.name && room.classroom.building.name.toLowerCase().includes(query)) ||
+            room.classroom.room_number.toLowerCase().includes(query) ||
+            `${room.classroom.building.code} ${room.classroom.room_number}`.toLowerCase().includes(query)
+        )
+      : classrooms;
 
-  const filteredOpeningSoon = useMemo(() => {
-    if (!searchQuery.trim()) return openingSoonRooms;
-    const query = searchQuery.toLowerCase();
-    return openingSoonRooms.filter(
-      (room) =>
-        room.classroom.building.code.toLowerCase().includes(query) ||
-        (room.classroom.building.name && room.classroom.building.name.toLowerCase().includes(query)) ||
-        room.classroom.room_number.toLowerCase().includes(query) ||
-        `${room.classroom.building.code} ${room.classroom.room_number}`.toLowerCase().includes(query)
-    );
-  }, [openingSoonRooms, searchQuery]);
+    const groups = new Map<string, {
+      buildingName: string;
+      buildingCode: string;
+      available: ClassroomAvailability[];
+      occupied: ClassroomAvailability[];
+    }>();
 
-  const filteredOccupied = useMemo(() => {
-    if (!searchQuery.trim()) return occupiedRooms;
-    const query = searchQuery.toLowerCase();
-    return occupiedRooms.filter(
-      (room) =>
-        room.classroom.building.code.toLowerCase().includes(query) ||
-        (room.classroom.building.name && room.classroom.building.name.toLowerCase().includes(query)) ||
-        room.classroom.room_number.toLowerCase().includes(query) ||
-        `${room.classroom.building.code} ${room.classroom.room_number}`.toLowerCase().includes(query)
-    );
-  }, [occupiedRooms, searchQuery]);
+    for (const room of filtered) {
+      const id = room.classroom.building.id;
+      if (!groups.has(id)) {
+        groups.set(id, {
+          buildingName: room.classroom.building.name,
+          buildingCode: room.classroom.building.code,
+          available: [],
+          occupied: [],
+        });
+      }
+      const group = groups.get(id)!;
+      if (room.isAvailable) {
+        group.available.push(room);
+      } else {
+        group.occupied.push(room);
+      }
+    }
 
-  const displayedOccupied = showAllOccupied
-    ? filteredOccupied
-    : filteredOccupied.slice(0, INITIAL_OCCUPIED_LIMIT);
+    // Sort buildings: those with available rooms first, then by code
+    return [...groups.entries()]
+      .sort(([, a], [, b]) => {
+        if (a.available.length > 0 && b.available.length === 0) return -1;
+        if (a.available.length === 0 && b.available.length > 0) return 1;
+        return a.buildingCode.localeCompare(b.buildingCode);
+      })
+      .map(([id, data]) => ({ buildingId: id, ...data }));
+  }, [classrooms, searchQuery]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -144,36 +167,7 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
-  // Track which buildings we've seen so we only record Y for the first occurrence
-  const seenBuildingsRef = useRef(new Set<string>());
-
-  const renderRoomCard = (room: (typeof classrooms)[number]) => {
-    const buildingId = room.classroom.building.id;
-    const isFirst = !seenBuildingsRef.current.has(buildingId);
-    if (isFirst) {
-      seenBuildingsRef.current.add(buildingId);
-    }
-
-    return (
-      <View
-        key={room.classroom.id}
-        onLayout={
-          isFirst
-            ? (e) => {
-                buildingYPositions.current[buildingId] =
-                  e.nativeEvent.layout.y;
-              }
-            : undefined
-        }
-      >
-        <RoomCard availability={room} />
-      </View>
-    );
-  };
-
   const renderContent = () => {
-    // Reset seen buildings on each render so tracking stays current
-    seenBuildingsRef.current.clear();
     if (isLoading && !refreshing) {
       return (
         <View style={styles.centerContent}>
@@ -214,61 +208,32 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Available Rooms Section */}
-        {filteredAvailable.length === 0 ? (
+        {buildingGroups.length === 0 ? (
           <View style={styles.emptySection}>
             <ThemedText style={{ color: iconColor }}>
               {searchQuery ? 'No matching rooms found' : 'No rooms available right now'}
             </ThemedText>
           </View>
         ) : (
-          filteredAvailable.map(renderRoomCard)
-        )}
-
-        {/* Opening Soon Section */}
-        {filteredOpeningSoon.length > 0 && (
-          <>
-            <View style={[styles.sectionHeader, styles.openingSoonHeader]}>
-              <ThemedText type="subtitle">Opening Soon</ThemedText>
-              <ThemedText style={[styles.sectionCount, { color: iconColor }]}>
-                {filteredOpeningSoon.length} rooms
-              </ThemedText>
-            </View>
-
-            {filteredOpeningSoon.map(renderRoomCard)}
-          </>
-        )}
-
-        {/* Occupied Rooms Section */}
-        {filteredOccupied.length > 0 && (
-          <>
-            <View style={[styles.sectionHeader, styles.occupiedHeader]}>
-              <ThemedText type="subtitle">Currently Occupied</ThemedText>
-              <ThemedText style={[styles.sectionCount, { color: iconColor }]}>
-                {filteredOccupied.length} rooms
-              </ThemedText>
-            </View>
-
-            {displayedOccupied.map(renderRoomCard)}
-
-            {filteredOccupied.length > INITIAL_OCCUPIED_LIMIT && (
-              <TouchableOpacity
-                style={[styles.showMoreButton, { borderColor: iconColor }]}
-                onPress={() => setShowAllOccupied(!showAllOccupied)}
-              >
-                <ThemedText style={[styles.showMoreText, { color: tintColor }]}>
-                  {showAllOccupied
-                    ? 'Show Less'
-                    : `Show ${filteredOccupied.length - INITIAL_OCCUPIED_LIMIT} More`}
-                </ThemedText>
-                <Ionicons
-                  name={showAllOccupied ? 'chevron-up' : 'chevron-down'}
-                  size={16}
-                  color={tintColor}
-                />
-              </TouchableOpacity>
-            )}
-          </>
+          buildingGroups.map((group) => (
+            <BuildingGroup
+              key={group.buildingId}
+              buildingName={group.buildingName}
+              buildingCode={group.buildingCode}
+              available={group.available}
+              occupied={group.occupied}
+              forceExpanded={expandedBuildingId === group.buildingId}
+              onExpand={() => {
+                if (settings.autoCenter) {
+                  setFocusBuildingId(null);
+                  setTimeout(() => setFocusBuildingId(group.buildingId), 0);
+                }
+              }}
+              onLayout={(e) => {
+                buildingYPositions.current[group.buildingId] = e.nativeEvent.layout.y;
+              }}
+            />
+          ))
         )}
 
         {/* Bottom spacing */}
@@ -280,11 +245,12 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       {/* Campus Map — full width at the very top */}
-      {!hideMap && (
+      {!settings.hideMap && (
         <View style={{ paddingTop: insets.top }}>
           <CollapsibleMapContainer>
             <CampusMap
               buildingPins={buildingPins}
+              focusBuildingId={focusBuildingId}
               onBuildingPress={handleBuildingPress}
             />
           </CollapsibleMapContainer>
@@ -292,16 +258,16 @@ export default function HomeScreen() {
       )}
 
       {/* Rest of content */}
-      <View style={[styles.contentPadding, hideMap && { paddingTop: insets.top }]}>
+      <View style={[styles.contentPadding, settings.hideMap && { paddingTop: insets.top }]}>
         {/* Header: Logo + Search + Filter in one row */}
-        <View style={styles.headerRow}>
+        <View style={[styles.headerRow, { borderBottomColor: dividerColor }]}>
           <Image
             source={require('@/assets/images/logo.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />
 
-          <View style={[styles.searchBar, { borderColor: iconColor }]}>
+          <View style={[styles.searchBar, { borderColor: strokeColor }]}>
             <Ionicons name="search" size={18} color={iconColor} />
             <TextInput
               style={[styles.searchInput, { color: textColor }]}
@@ -320,22 +286,22 @@ export default function HomeScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.iconCircle, { borderColor: iconColor }]}
+            style={[styles.iconCircle, { borderColor: strokeColor }]}
             onPress={() => {/* TODO: open filter */}}
             accessibilityRole="button"
             accessibilityLabel="Filter rooms"
           >
-            <Ionicons name="options-outline" size={18} color="#ffffff" />
+            <Ionicons name="options-outline" size={18} color={textColor} />
           </TouchableOpacity>
 
           <TouchableOpacity
             ref={settingsButtonRef}
-            style={[styles.iconCircle, { borderColor: iconColor }]}
+            style={[styles.iconCircle, { borderColor: strokeColor }]}
             onPress={toggleSettingsPopover}
             accessibilityRole="button"
             accessibilityLabel="Settings"
           >
-            <Ionicons name="settings-outline" size={18} color="#ffffff" />
+            <Ionicons name="settings-outline" size={18} color={textColor} />
           </TouchableOpacity>
         </View>
 
@@ -364,8 +330,48 @@ export default function HomeScreen() {
                   <ThemedText style={[styles.settingsRowLabel, { color: popoverText }]}>Hide Map</ThemedText>
                 </View>
                 <Switch
-                  value={hideMap}
-                  onValueChange={setHideMap}
+                  value={settings.hideMap}
+                  onValueChange={(v) => updateSetting('hideMap', v)}
+                  trackColor={{ false: dividerColor, true: tintColor }}
+                  thumbColor="#ffffff"
+                  ios_backgroundColor={dividerColor}
+                />
+              </View>
+
+              <View style={styles.settingsRow}>
+                <View style={styles.settingsRowLeft}>
+                  <Ionicons name="locate-outline" size={18} color={iconColor} />
+                  <ThemedText style={[styles.settingsRowLabel, { color: popoverText }]}>Auto-center Building</ThemedText>
+                  <TouchableOpacity onPress={() => setAutoCenterHelpVisible(!autoCenterHelpVisible)} hitSlop={8}>
+                    <Ionicons name="help-circle-outline" size={16} color={iconColor} />
+                  </TouchableOpacity>
+                </View>
+                <Switch
+                  value={settings.autoCenter}
+                  onValueChange={(v) => updateSetting('autoCenter', v)}
+                  trackColor={{ false: dividerColor, true: tintColor }}
+                  thumbColor="#ffffff"
+                  ios_backgroundColor={dividerColor}
+                />
+              </View>
+
+              {autoCenterHelpVisible && (
+                <ThemedText style={[styles.autoCenterHelp, { color: iconColor }]}>
+                  When enabled, expanding a building in the list will automatically pan the map to that building's location.
+                </ThemedText>
+              )}
+
+              <View style={styles.settingsRow}>
+                <View style={styles.settingsRowLeft}>
+                  <Ionicons name={colorScheme === 'dark' ? 'moon' : 'moon-outline'} size={18} color={iconColor} />
+                  <ThemedText style={[styles.settingsRowLabel, { color: popoverText }]}>Dark Mode</ThemedText>
+                </View>
+                <Switch
+                  value={colorScheme === 'dark'}
+                  onValueChange={(val) => {
+                    setColorScheme(val ? 'dark' : 'light');
+                    updateSetting('darkMode', val);
+                  }}
                   trackColor={{ false: dividerColor, true: tintColor }}
                   thumbColor="#ffffff"
                   ios_backgroundColor={dividerColor}
@@ -424,10 +430,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   logoImage: {
-    height: 36,
-    width: 90,
+    height: 40,
+    width: 100,
+    marginLeft: -4,
+      marginVertical: 1,
   },
   roomContent: {
     flex: 1,
@@ -477,6 +487,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  autoCenterHelp: {
+    fontSize: 12,
+    lineHeight: 16,
+    paddingHorizontal: 6,
+    paddingBottom: 6,
+  },
   settingsRowLabel: {
     fontSize: 15,
     fontWeight: '600',
@@ -517,21 +533,6 @@ const styles = StyleSheet.create({
   roomList: {
     flex: 1,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionCount: {
-    fontSize: 14,
-  },
-  openingSoonHeader: {
-    marginTop: 24,
-  },
-  occupiedHeader: {
-    marginTop: 24,
-  },
   emptySection: {
     paddingVertical: 24,
     alignItems: 'center',
@@ -559,17 +560,5 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: '#fff',
     fontWeight: '600',
-  },
-  showMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderRadius: 8,
-    gap: 4,
-  },
-  showMoreText: {
-    fontWeight: '500',
   },
 });
