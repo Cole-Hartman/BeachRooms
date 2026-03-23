@@ -100,7 +100,7 @@ export default function HomeScreen() {
     "Availability based on official class times only",
     "Rooms may be booked by clubs or meetings",
     "Hours vary during finals week",
-    "Keep the rooms tidy",
+    "Keep the rooms tidy!",
     "Maintain a respectful noise level to avoid disrupting classes",
     "Classroom access is a privilege. Rooms may be locked by the school if used improperly",
   ];
@@ -357,7 +357,7 @@ export default function HomeScreen() {
 
               {autoCenterHelpVisible && (
                 <ThemedText style={[styles.autoCenterHelp, { color: iconColor }]}>
-                  When enabled, expanding a building in the list will automatically pan the map to that building&apos;s location.
+                  Expanding a building will automatically center the map to that building&apos;s location.
                 </ThemedText>
               )}
 
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   },
   settingsPopover: {
     position: 'absolute',
-    width: 290,
+    width: 320,
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 12,

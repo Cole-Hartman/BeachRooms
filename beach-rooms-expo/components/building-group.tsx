@@ -11,9 +11,6 @@ import type { ClassroomAvailability } from '@/types/database';
 const pinGreen = require('@/assets/images/pin-green.png');
 const pinRed = require('@/assets/images/pin-red.png');
 
-// Match the map pin colors
-const PIN_GREEN = '#28a745';
-const PIN_RED = '#dc3545';
 
 function formatTime(date: Date): string {
   const hours = date.getHours();
@@ -51,7 +48,6 @@ export function BuildingGroup({
   onExpand,
   onLayout,
 }: BuildingGroupProps) {
-  const iconColor = useThemeColor({}, 'icon');
   const buildingNameColor = useThemeColor(
     { light: 'rgba(0,0,0,0.7)', dark: 'rgba(255,255,255,0.85)' },
     'text'
@@ -186,6 +182,18 @@ function RoomStatusText({ room, type }: { room: ClassroomAvailability; type: 'av
     }
   }
 
+  // Occupied rooms: parse "Free at H:MM AM/PM for Xh Ym"
+  if (type === 'occupied') {
+    const occupiedMatch = room.statusText.match(/Free at (.+?\s[AP]M) for (.+)/);
+    if (occupiedMatch) {
+      return (
+        <Text style={[styles.roomStatus, { color: iconColor }]}>
+          Free at <Text style={styles.roomStatusBold}>{occupiedMatch[1]}</Text> for <Text style={styles.roomStatusBold}>{occupiedMatch[2]}</Text>
+        </Text>
+      );
+    }
+  }
+
   return (
     <Text style={[styles.roomStatus, { color: iconColor }]}>
       {room.statusText}
@@ -206,7 +214,6 @@ function RoomRow({
 }) {
   const { setSelectedRoom } = useRoomDetail();
   const router = useRouter();
-  const iconColor = useThemeColor({}, 'icon');
   const roomNameColor = useThemeColor(
     { light: 'rgba(0,0,0,0.7)', dark: 'rgba(255,255,255,0.85)' },
     'text'
@@ -254,7 +261,7 @@ const styles = StyleSheet.create({
   },
   buildingName: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Inter_600SemiBold',
   },
   buildingHeaderRight: {
     flexDirection: 'row',
@@ -299,7 +306,7 @@ const styles = StyleSheet.create({
   },
   roomNumber: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Inter_600SemiBold',
   },
   roomStatus: {
     fontSize: 13,
