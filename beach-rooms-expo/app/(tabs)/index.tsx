@@ -410,26 +410,27 @@ export default function HomeScreen() {
         </Modal>
 
         {/* Content */}
+        {/* Content */}
         <View style={styles.roomContent}>
           {renderContent()}
         </View>
-        </View>
-        {/* Location Banner */}
-        {(locationStatus === 'denied' || locationStatus === 'pending') && (
-          <TouchableOpacity
-            style={styles.locationBanner}
-            onPress={requestPermission}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="location-outline" size={18} color="#fff" />
-            <ThemedText style={styles.locationBannerText}>
-              Enable location to sort by distance
-            </ThemedText>
-            <Ionicons name="chevron-forward" size={16} color="#fff" />
-          </TouchableOpacity>
-        )}
-      </ThemedView>
+      </View>
 
+      {/* Location Banner */}
+      {(locationStatus === 'denied' || locationStatus === 'pending') && (
+        <TouchableOpacity
+          style={styles.locationBanner}
+          onPress={requestPermission}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="location-outline" size={18} color="#fff" />
+          <ThemedText style={styles.locationBannerText}>
+            Enable location to sort by distance
+          </ThemedText>
+          <Ionicons name="chevron-forward" size={16} color="#fff" />
+        </TouchableOpacity>
+      )}
+    </ThemedView>
   );
 }
 

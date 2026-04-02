@@ -24,7 +24,7 @@
             ]
           }
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Allow BeachRooms to use your location to find nearby classrooms."
       }
     },
@@ -63,7 +63,7 @@
       ],
       "expo-secure-store",
       "@react-native-google-signin/google-signin",
-      "@rnmapbox/maps"
+      "@rnmapbox/maps",
       [
         "expo-location",
         {
