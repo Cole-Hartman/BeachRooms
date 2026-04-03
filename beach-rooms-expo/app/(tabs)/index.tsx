@@ -18,9 +18,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RoomCard } from '@/components/room-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TimeFilterChip } from '@/components/time-filter-chip';
+import { TimePickerModal } from '@/components/time-picker-modal';
 import { useClassrooms } from '@/hooks/use-classrooms';
 import { useLocation } from '@/hooks/use-location';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { formatTimeDisplay } from '@/lib/time-utils';
 
 const INITIAL_OCCUPIED_LIMIT = 3;
 
@@ -41,7 +44,9 @@ export default function HomeScreen() {
   );
 
   const { location, status: locationStatus, requestPermission, refreshLocation } = useLocation();
-  const { availableRooms, openingSoonRooms, occupiedRooms, isLoading, error, refetch } = useClassrooms({ userLocation: location });
+  const [selectedTime, setSelectedTime] = useState<Date | null>(null);
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const { availableRooms, openingSoonRooms, occupiedRooms, isLoading, error, refetch } = useClassrooms({ userLocation: location, filterTime: selectedTime });
   const [showAllOccupied, setShowAllOccupied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,6 +88,16 @@ export default function HomeScreen() {
     "Maintain a respectful noise level to avoid disrupting classes",
     "Classroom access is a privilege. Rooms may be locked by the school if used improperly",
   ];
+
+  const handleTimeConfirm = (time: Date) => {
+    setSelectedTime(time);
+    setTimePickerVisible(false);
+  };
+
+  const handleTimeReset = () => {
+    setSelectedTime(null);
+    setTimePickerVisible(false);
+  };
 
   // Filter rooms based on search query
   const filteredAvailable = useMemo(() => {
@@ -173,7 +188,9 @@ export default function HomeScreen() {
       >
         {/* Available Rooms Section */}
         <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle">Available Now</ThemedText>
+          <ThemedText type="subtitle">
+            {selectedTime ? `Available at ${formatTimeDisplay(selectedTime)}` : 'Available Now'}
+          </ThemedText>
           <ThemedText style={[styles.sectionCount, { color: iconColor }]}>
             {filteredAvailable.length} rooms
           </ThemedText>
@@ -338,6 +355,22 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Time Filter */}
+      <TimeFilterChip
+        selectedTime={selectedTime}
+        onPress={() => setTimePickerVisible(true)}
+        onClear={handleTimeReset}
+      />
+
+      {/* Time Picker Modal */}
+      <TimePickerModal
+        visible={timePickerVisible}
+        initialTime={selectedTime || new Date()}
+        onConfirm={handleTimeConfirm}
+        onCancel={() => setTimePickerVisible(false)}
+        onReset={handleTimeReset}
+      />
 
       {/* Quick Stats */}
       <View style={styles.statsContainer}>

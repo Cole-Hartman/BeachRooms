@@ -14,6 +14,7 @@ const OPENING_SOON_MINUTES = 30;
 
 interface UseClassroomsOptions {
   userLocation?: UserLocation | null;
+  filterTime?: Date | null;
 }
 
 interface UseClassroomsResult {
@@ -27,7 +28,7 @@ interface UseClassroomsResult {
 }
 
 export function useClassrooms(options: UseClassroomsOptions = {}): UseClassroomsResult {
-  const { userLocation } = options;
+  const { userLocation, filterTime } = options;
   const [classrooms, setClassrooms] = useState<ClassroomAvailability[]>([]);
   const [testTime, setTestTime] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,17 +39,9 @@ export function useClassrooms(options: UseClassroomsOptions = {}): UseClassrooms
     setError(null);
 
     try {
-      // Commented out for testing - using Monday at noon instead
-      // const now = new Date();
-      // const dayOfWeek = now.getDay();
-      
-      // Testing: using Monday at noon
-      const now = new Date();
-      const currentDay = now.getDay();
-      const daysUntilMonday = currentDay === 1 ? 0 : (1 + 7 - currentDay) % 7; // Today if Monday, otherwise next Monday
-      now.setDate(now.getDate() + daysUntilMonday);
-      now.setHours(12, 0, 0, 0); // Set to noon
-      const dayOfWeek = 1; // Monday
+      // Use filterTime if provided, otherwise use current time
+      const now = filterTime ?? new Date();
+      const dayOfWeek = now.getDay();
 
       // Fetch classrooms with building info
       const { data: classroomsData, error: classroomsError } = await supabase
@@ -152,7 +145,7 @@ export function useClassrooms(options: UseClassroomsOptions = {}): UseClassrooms
     } finally {
       setIsLoading(false);
     }
-  }, [userLocation]);
+  }, [userLocation, filterTime]);
 
   useEffect(() => {
     fetchClassrooms();

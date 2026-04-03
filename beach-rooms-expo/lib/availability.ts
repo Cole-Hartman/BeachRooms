@@ -113,16 +113,22 @@ function formatFreeAtWithDuration(time: Date, durationMinutes: number): string {
 }
 
 /**
- * Format "Free until X (Y)" message for currently available rooms
+ * Format a time as "H:MM AM/PM"
  */
-function formatFreeUntilWithDuration(untilTime: Date, durationMinutes: number): string {
-  const hours = untilTime.getHours();
-  const minutes = untilTime.getMinutes();
+function formatTime(time: Date): string {
+  const hours = time.getHours();
+  const minutes = time.getMinutes();
   const ampm = hours >= 12 ? 'PM' : 'AM';
   const displayHours = hours % 12 || 12;
   const displayMinutes = minutes.toString().padStart(2, '0');
+  return `${displayHours}:${displayMinutes} ${ampm}`;
+}
 
-  return `Free until ${displayHours}:${displayMinutes} ${ampm} (${formatDuration(durationMinutes)})`;
+/**
+ * Format "Free from X until Y (Z)" message for currently available rooms
+ */
+function formatFreeUntilWithDuration(fromTime: Date, untilTime: Date, durationMinutes: number): string {
+  return `${formatTime(fromTime)} - ${formatTime(untilTime)}\n(${formatDuration(durationMinutes)} free)`;
 }
 
 const MIN_USABLE_MINUTES = 30;
@@ -318,7 +324,7 @@ export function calculateAvailability(
       nextClassStartsAt: nextStartTime,
       currentClassEndsAt: null,
       minutesUntilNextClass: minutesUntil,
-      statusText: formatFreeUntilWithDuration(nextStartTime, minutesUntil),
+      statusText: formatFreeUntilWithDuration(now, nextStartTime, minutesUntil),
       distanceMiles: null,
     };
   }
@@ -335,7 +341,7 @@ export function calculateAvailability(
     nextClassStartsAt: null,
     currentClassEndsAt: null,
     minutesUntilNextClass: null,
-    statusText: formatFreeUntilWithDuration(buildingStatus.closesAt, minutesUntilClose),
+    statusText: formatFreeUntilWithDuration(now, buildingStatus.closesAt, minutesUntilClose),
     distanceMiles: null,
   };
 }
