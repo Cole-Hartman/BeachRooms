@@ -74,12 +74,13 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 5,
-    marginLeft: 2,
+    marginLeft: 4,
   },
   badgeText: {
     color: '#fff',
     fontSize: 11,
     fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 13,
   },
 });

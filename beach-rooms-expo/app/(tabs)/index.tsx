@@ -110,7 +110,7 @@ export default function HomeScreen() {
   };
 
   // Count active filters for badge
-  const activeFilterCount = (selectedTime !== null ? 1 : 0) + (!sortByDistance ? 1 : 0);
+  const activeFilterCount = (selectedTime !== null ? 1 : 0) + (sortByDistance && locationEnabled ? 1 : 0);
 
   // Filter rooms based on search query
   const filteredAvailable = useMemo(() => {
