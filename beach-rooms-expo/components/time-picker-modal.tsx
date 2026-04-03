@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -23,6 +23,7 @@ export function TimePickerModal({
   onReset,
 }: TimePickerModalProps) {
   const [tempTime, setTempTime] = useState(initialTime);
+  const colorScheme = useColorScheme();
   const tintColor = useThemeColor({}, 'tint');
   const iconColor = useThemeColor({}, 'icon');
   const backgroundColor = useThemeColor({ light: '#ffffff', dark: '#1f2123' }, 'background');
@@ -76,6 +77,7 @@ export function TimePickerModal({
               onChange={handleChange}
               minuteInterval={5}
               style={styles.picker}
+              themeVariant={colorScheme === 'dark' ? 'dark' : 'light'}
             />
           </View>
 
