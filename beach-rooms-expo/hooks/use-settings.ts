@@ -5,6 +5,7 @@ interface Settings {
   hideMap: boolean;
   autoCenter: boolean;
   darkMode: boolean;
+  sortByDistance: boolean;
 }
 
 const STORAGE_KEY = '@beach_rooms_settings';
@@ -13,6 +14,7 @@ const defaults: Settings = {
   hideMap: false,
   autoCenter: false,
   darkMode: false,
+  sortByDistance: false,
 };
 
 export function useSettings() {

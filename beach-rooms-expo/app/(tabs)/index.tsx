@@ -50,7 +50,7 @@ export default function HomeScreen() {
     'background'
   );
   const { location, status: locationStatus, requestPermission, refreshLocation } = useLocation();
-  const { classrooms, isLoading, error, refetch } = useClassrooms({userLocation: location});
+  const { classrooms, isLoading, error, refetch } = useClassrooms({userLocation: settings?.sortByDistance ? location : undefined});
   const buildingPins = useBuildingPins(classrooms);
   const scrollViewRef = useRef<ScrollView>(null);
   const buildingYPositions = useRef<Record<string, number>>({});
@@ -67,6 +67,7 @@ export default function HomeScreen() {
     }
   }, [settingsLoaded, setColorScheme, settings.darkMode]);
   const [autoCenterHelpVisible, setAutoCenterHelpVisible] = useState(false);
+  const [sortByDistanceHelpVisible, setSortByDistanceHelpVisible] = useState(false);
   const [usageExpanded, setUsageExpanded] = useState(false);
   const [popoverTopRight, setPopoverTopRight] = useState<{ top: number; right: number } | null>(null);
   const settingsButtonRef = useRef<View>(null);
@@ -129,6 +130,7 @@ export default function HomeScreen() {
     const groups = new Map<string, {
       buildingName: string;
       buildingCode: string;
+      distanceMiles: number | null;
       available: ClassroomAvailability[];
       occupied: ClassroomAvailability[];
     }>();
@@ -139,6 +141,7 @@ export default function HomeScreen() {
         groups.set(id, {
           buildingName: room.classroom.building.name,
           buildingCode: room.classroom.building.code,
+          distanceMiles: room.distanceMiles,
           available: [],
           occupied: [],
         });
@@ -151,15 +154,18 @@ export default function HomeScreen() {
       }
     }
 
-    // Sort buildings: those with available rooms first, then by code
+    // Sort buildings: those with available rooms first, then by distance or code
     return [...groups.entries()]
       .sort(([, a], [, b]) => {
         if (a.available.length > 0 && b.available.length === 0) return -1;
         if (a.available.length === 0 && b.available.length > 0) return 1;
+        if (settings?.sortByDistance && a.distanceMiles != null && b.distanceMiles != null) {
+          return a.distanceMiles - b.distanceMiles;
+        }
         return a.buildingCode.localeCompare(b.buildingCode);
       })
       .map(([id, data]) => ({ buildingId: id, ...data }));
-  }, [classrooms, searchQuery]);
+  }, [classrooms, searchQuery, settings?.sortByDistance]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -378,6 +384,34 @@ export default function HomeScreen() {
                 />
               </View>
 
+              <View style={styles.settingsRow}>
+                <View style={styles.settingsRowLeft}>
+                  <Ionicons name="navigate-outline" size={18} color={iconColor} />
+                  <ThemedText style={[styles.settingsRowLabel, { color: popoverText }]}>Sort Buildings by Distance</ThemedText>
+                  <TouchableOpacity onPress={() => setSortByDistanceHelpVisible(!sortByDistanceHelpVisible)} hitSlop={8}>
+                    <Ionicons name="help-circle-outline" size={16} color={iconColor} />
+                  </TouchableOpacity>
+                </View>
+                <Switch
+                  value={settings.sortByDistance}
+                  onValueChange={(v) => {
+                    updateSetting('sortByDistance', v);
+                    if (v && locationStatus !== 'granted') {
+                      requestPermission();
+                    }
+                  }}
+                  trackColor={{ false: dividerColor, true: tintColor }}
+                  thumbColor="#ffffff"
+                  ios_backgroundColor={dividerColor}
+                />
+              </View>
+
+              {sortByDistanceHelpVisible && (
+                <ThemedText style={[styles.autoCenterHelp, { color: iconColor }]}>
+                  Sorts buildings by distance from your current location. Requires location permission.
+                </ThemedText>
+              )}
+
               <View style={[styles.settingsDivider, { backgroundColor: dividerColor }]} />
 
               <TouchableOpacity
@@ -416,20 +450,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Location Banner */}
-      {(locationStatus === 'denied' || locationStatus === 'pending') && (
-        <TouchableOpacity
-          style={styles.locationBanner}
-          onPress={requestPermission}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="location-outline" size={18} color="#fff" />
-          <ThemedText style={styles.locationBannerText}>
-            Enable location to sort by distance
-          </ThemedText>
-          <Ionicons name="chevron-forward" size={16} color="#fff" />
-        </TouchableOpacity>
-      )}
     </ThemedView>
   );
 }
@@ -545,22 +565,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     paddingVertical: 0,
-  },
-  locationBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#6c757d',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginBottom: 16,
-    gap: 8,
-  },
-  locationBannerText: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
   },
   roomList: {
     flex: 1,
