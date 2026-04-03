@@ -49,8 +49,9 @@ export default function HomeScreen() {
   const [sortByDistance, setSortByDistance] = useState(true);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
   const [filterMenuVisible, setFilterMenuVisible] = useState(false);
-  const { availableRooms, openingSoonRooms, occupiedRooms, isLoading, error, refetch } = useClassrooms({ userLocation: location, filterTime: selectedTime, sortByDistance });
+  const { availableRooms, openingSoonRooms, occupiedRooms, closedRooms, isLoading, error, refetch } = useClassrooms({ userLocation: location, filterTime: selectedTime, sortByDistance });
   const [showAllOccupied, setShowAllOccupied] = useState(false);
+  const [showAllClosed, setShowAllClosed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -149,9 +150,25 @@ export default function HomeScreen() {
     );
   }, [occupiedRooms, searchQuery]);
 
+  const filteredClosed = useMemo(() => {
+    if (!searchQuery.trim()) return closedRooms;
+    const query = searchQuery.toLowerCase();
+    return closedRooms.filter(
+      (room) =>
+        room.classroom.building.code.toLowerCase().includes(query) ||
+        (room.classroom.building.name && room.classroom.building.name.toLowerCase().includes(query)) ||
+        room.classroom.room_number.toLowerCase().includes(query) ||
+        `${room.classroom.building.code} ${room.classroom.room_number}`.toLowerCase().includes(query)
+    );
+  }, [closedRooms, searchQuery]);
+
   const displayedOccupied = showAllOccupied
     ? filteredOccupied
     : filteredOccupied.slice(0, INITIAL_OCCUPIED_LIMIT);
+
+  const displayedClosed = showAllClosed
+    ? filteredClosed
+    : filteredClosed.slice(0, INITIAL_OCCUPIED_LIMIT);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -263,6 +280,40 @@ export default function HomeScreen() {
                 </ThemedText>
                 <Ionicons
                   name={showAllOccupied ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={tintColor}
+                />
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+
+        {/* Closed Rooms Section */}
+        {filteredClosed.length > 0 && (
+          <>
+            <View style={[styles.sectionHeader, styles.closedHeader]}>
+              <ThemedText type="subtitle">Closed</ThemedText>
+              <ThemedText style={[styles.sectionCount, { color: iconColor }]}>
+                {filteredClosed.length} rooms
+              </ThemedText>
+            </View>
+
+            {displayedClosed.map((room) => (
+              <RoomCard key={room.classroom.id} availability={room} />
+            ))}
+
+            {filteredClosed.length > INITIAL_OCCUPIED_LIMIT && (
+              <TouchableOpacity
+                style={[styles.showMoreButton, { borderColor: iconColor }]}
+                onPress={() => setShowAllClosed(!showAllClosed)}
+              >
+                <ThemedText style={[styles.showMoreText, { color: tintColor }]}>
+                  {showAllClosed
+                    ? 'Show Less'
+                    : `Show ${filteredClosed.length - INITIAL_OCCUPIED_LIMIT} More`}
+                </ThemedText>
+                <Ionicons
+                  name={showAllClosed ? 'chevron-up' : 'chevron-down'}
                   size={16}
                   color={tintColor}
                 />
@@ -575,6 +626,9 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   occupiedHeader: {
+    marginTop: 24,
+  },
+  closedHeader: {
     marginTop: 24,
   },
   emptySection: {

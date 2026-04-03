@@ -252,9 +252,10 @@ export function calculateAvailability(
     };
   }
 
-  // Find current class and next class
+  // Find current class, next class, and previous class
   let currentClass: ClassSchedule | null = null;
   let nextClass: ClassSchedule | null = null;
+  let previousClass: ClassSchedule | null = null;
 
   for (const schedule of schedules) {
     const startTime = parseTimeToday(schedule.start_time, now);
@@ -265,6 +266,11 @@ export function calculateAvailability(
     } else if (now < startTime) {
       if (!nextClass || startTime < parseTimeToday(nextClass.start_time, now)) {
         nextClass = schedule;
+      }
+    } else if (endTime <= now) {
+      // Class ended before now - track the most recent one
+      if (!previousClass || endTime > parseTimeToday(previousClass.end_time, now)) {
+        previousClass = schedule;
       }
     }
   }
@@ -291,6 +297,11 @@ export function calculateAvailability(
     };
   }
 
+  // Determine when the room actually became free
+  const freeStartTime = previousClass
+    ? parseTimeToday(previousClass.end_time, now)
+    : buildingStatus.opensAt;
+
   // Room not currently in class - check gap to next class
   if (nextClass) {
     const nextStartTime = parseTimeToday(nextClass.start_time, now);
@@ -316,6 +327,11 @@ export function calculateAvailability(
       };
     }
 
+    // Calculate full duration from when room became free
+    const fullDurationMinutes = Math.floor(
+      (nextStartTime.getTime() - freeStartTime.getTime()) / 60000
+    );
+
     return {
       classroom,
       isAvailable: true,
@@ -324,14 +340,14 @@ export function calculateAvailability(
       nextClassStartsAt: nextStartTime,
       currentClassEndsAt: null,
       minutesUntilNextClass: minutesUntil,
-      statusText: formatFreeUntilWithDuration(now, nextStartTime, minutesUntil),
+      statusText: formatFreeUntilWithDuration(freeStartTime, nextStartTime, fullDurationMinutes),
       distanceMiles: null,
     };
   }
 
   // No more classes today - free until building closes
-  const minutesUntilClose = Math.floor(
-    (buildingStatus.closesAt.getTime() - now.getTime()) / 60000
+  const fullDurationMinutes = Math.floor(
+    (buildingStatus.closesAt.getTime() - freeStartTime.getTime()) / 60000
   );
   return {
     classroom,
@@ -341,7 +357,7 @@ export function calculateAvailability(
     nextClassStartsAt: null,
     currentClassEndsAt: null,
     minutesUntilNextClass: null,
-    statusText: formatFreeUntilWithDuration(now, buildingStatus.closesAt, minutesUntilClose),
+    statusText: formatFreeUntilWithDuration(freeStartTime, buildingStatus.closesAt, fullDurationMinutes),
     distanceMiles: null,
   };
 }

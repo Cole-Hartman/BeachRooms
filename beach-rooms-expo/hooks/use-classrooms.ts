@@ -23,6 +23,7 @@ interface UseClassroomsResult {
   availableRooms: ClassroomAvailability[];
   openingSoonRooms: ClassroomAvailability[];
   occupiedRooms: ClassroomAvailability[];
+  closedRooms: ClassroomAvailability[];
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -181,17 +182,24 @@ export function useClassrooms(options: UseClassroomsOptions = {}): UseClassrooms
   });
   console.log(`[Opening Soon] Found ${openingSoonRooms.length} opening soon rooms`);
 
-  // Occupied rooms excludes those opening soon
+  // Occupied rooms: in_use or limited status, excludes those opening soon
   const openingSoonIds = new Set(openingSoonRooms.map((c) => c.classroom.id));
   const occupiedRooms = classrooms.filter(
-    (c) => !c.isAvailable && !openingSoonIds.has(c.classroom.id)
+    (c) =>
+      !c.isAvailable &&
+      !openingSoonIds.has(c.classroom.id) &&
+      (c.status === 'in_use' || c.status === 'limited')
   );
+
+  // Closed rooms: building closed, no classes today, etc.
+  const closedRooms = classrooms.filter((c) => c.status === 'closed');
 
   return {
     classrooms,
     availableRooms,
     openingSoonRooms,
     occupiedRooms,
+    closedRooms,
     isLoading,
     error,
     refetch: fetchClassrooms,
