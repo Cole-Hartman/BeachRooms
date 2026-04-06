@@ -64,24 +64,6 @@ function formatTimeUntil(targetTime: Date, prefix: string): string {
 }
 
 /**
- * Format how long a room is free for
- */
-function formatFreeTime(minutes: number): string {
-  if (minutes < 60) {
-    return `Free for ${minutes} min`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-
-  if (remainingMinutes === 0) {
-    return `Free for ${hours}h`;
-  }
-
-  return `Free for ${hours}h ${remainingMinutes}m`;
-}
-
-/**
  * Format duration in short form (e.g., "2h" or "1h 30m")
  */
 function formatDuration(minutes: number): string {

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "beach-rooms-expo",
-    "slug": "beach-rooms-expo",
+    "slug": "beachrooms",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -17,8 +17,14 @@
             "CFBundleURLSchemes": [
               "com.googleusercontent.apps.590247453462-1u85c4hsj4n4vjlm2nd9n562cn9hd4lo"
             ]
+          },
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.590247453462-1u85c4hsj4n4vjlm2nd9n562cn9hd4lo"
+            ]
           }
         ],
+        "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Allow BeachRooms to use your location to find nearby classrooms."
       }
     },
@@ -32,8 +38,6 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
@@ -59,6 +63,7 @@
       ],
       "expo-secure-store",
       "@react-native-google-signin/google-signin",
+      "@rnmapbox/maps",
       [
         "expo-location",
         {
@@ -70,6 +75,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "072edf77-6de1-4080-9353-a2d9c571cb40"
+      }
+    },
+    "owner": "ticojol"
   }
 }
