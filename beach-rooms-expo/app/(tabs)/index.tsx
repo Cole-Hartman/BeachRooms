@@ -424,13 +424,15 @@ export default function HomeScreen() {
                   <Ionicons name="map-outline" size={18} color={iconColor} />
                   <ThemedText style={[styles.settingsRowLabel, { color: popoverText }]}>Hide Map</ThemedText>
                 </View>
-                <Switch
-                  value={settings.hideMap}
-                  onValueChange={(v) => updateSetting('hideMap', v)}
-                  trackColor={{ false: dividerColor, true: tintColor }}
-                  thumbColor="#ffffff"
-                  ios_backgroundColor={dividerColor}
-                />
+                <View style={styles.settingsRowRight}>
+                  <Switch
+                    value={settings.hideMap}
+                    onValueChange={(v) => updateSetting('hideMap', v)}
+                    trackColor={{ false: dividerColor, true: tintColor }}
+                    thumbColor="#ffffff"
+                    ios_backgroundColor={dividerColor}
+                  />
+                </View>
               </View>
 
               <View style={styles.settingsRow}>
@@ -441,13 +443,15 @@ export default function HomeScreen() {
                     <Ionicons name="help-circle-outline" size={16} color={iconColor} />
                   </TouchableOpacity>
                 </View>
-                <Switch
-                  value={settings.autoCenter}
-                  onValueChange={(v) => updateSetting('autoCenter', v)}
-                  trackColor={{ false: dividerColor, true: tintColor }}
-                  thumbColor="#ffffff"
-                  ios_backgroundColor={dividerColor}
-                />
+                <View style={styles.settingsRowRight}>
+                  <Switch
+                    value={settings.autoCenter}
+                    onValueChange={(v) => updateSetting('autoCenter', v)}
+                    trackColor={{ false: dividerColor, true: tintColor }}
+                    thumbColor="#ffffff"
+                    ios_backgroundColor={dividerColor}
+                  />
+                </View>
               </View>
 
               {autoCenterHelpVisible && (
@@ -461,16 +465,18 @@ export default function HomeScreen() {
                   <Ionicons name={colorScheme === 'dark' ? 'moon' : 'moon-outline'} size={18} color={iconColor} />
                   <ThemedText style={[styles.settingsRowLabel, { color: popoverText }]}>Dark Mode</ThemedText>
                 </View>
-                <Switch
-                  value={colorScheme === 'dark'}
-                  onValueChange={(val) => {
-                    setColorScheme(val ? 'dark' : 'light');
-                    updateSetting('darkMode', val);
-                  }}
-                  trackColor={{ false: dividerColor, true: tintColor }}
-                  thumbColor="#ffffff"
-                  ios_backgroundColor={dividerColor}
-                />
+                <View style={styles.settingsRowRight}>
+                  <Switch
+                    value={colorScheme === 'dark'}
+                    onValueChange={(val) => {
+                      setColorScheme(val ? 'dark' : 'light');
+                      updateSetting('darkMode', val);
+                    }}
+                    trackColor={{ false: dividerColor, true: tintColor }}
+                    thumbColor="#ffffff"
+                    ios_backgroundColor={dividerColor}
+                  />
+                </View>
               </View>
 
               <View style={[styles.settingsDivider, { backgroundColor: dividerColor }]} />
@@ -483,11 +489,13 @@ export default function HomeScreen() {
                   <Ionicons name="information-circle-outline" size={18} color={iconColor} />
                   <ThemedText style={[styles.settingsRowLabel, { color: popoverText }]}>Usage &amp; Etiquette</ThemedText>
                 </View>
-                <Ionicons
-                  name={usageExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={16}
-                  color={iconColor}
-                />
+                <View style={styles.settingsRowRight}>
+                  <Ionicons
+                    name={usageExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={14}
+                    color={iconColor}
+                  />
+                </View>
               </TouchableOpacity>
 
               {usageExpanded && (
@@ -511,7 +519,9 @@ export default function HomeScreen() {
                     Report an Issue
                   </ThemedText>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={iconColor} />
+                <View style={styles.settingsRowRight}>
+                  <Ionicons name="chevron-forward" size={14} color={iconColor} />
+                </View>
               </TouchableOpacity>
 
               {isLoggedIn && (
@@ -522,7 +532,9 @@ export default function HomeScreen() {
                       My Reports
                     </ThemedText>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={iconColor} />
+                  <View style={styles.settingsRowRight}>
+                    <Ionicons name="chevron-forward" size={14} color={iconColor} />
+                  </View>
                 </TouchableOpacity>
               )}
             </Pressable>
@@ -614,11 +626,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 6,
+    paddingHorizontal: 6,
   },
   settingsRowLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  settingsRowRight: {
+    width: 52,
+    alignItems: 'flex-end',
   },
   autoCenterHelp: {
     fontSize: 12,
@@ -639,6 +657,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 6,
+    paddingHorizontal: 6,
   },
   usageSection: {
     paddingHorizontal: 6,
