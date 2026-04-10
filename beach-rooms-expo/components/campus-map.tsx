@@ -93,10 +93,12 @@ export function CampusMap({ buildingPins, focusBuildingId, onBuildingPress }: Ca
     const map = mapRef.current;
     if (!map) return;
     try {
-      map.setSourceVisibility(false, 'composite', 'poi_label');
-      map.setSourceVisibility(false, 'composite', 'natural_label');
-      map.setSourceVisibility(false, 'composite', 'transit_label');
+      // Try to hide labels from mapbox-streets source we added
+      map.setSourceVisibility(false, 'mapbox-streets', 'poi_label');
+      map.setSourceVisibility(false, 'mapbox-streets', 'natural_label');
+      map.setSourceVisibility(false, 'mapbox-streets', 'transit_label');
     } catch (err) {
+      // Labels may be controlled by the custom style in Mapbox Studio
       console.warn('Failed to hide POI labels:', err);
     }
   };
@@ -138,20 +140,24 @@ export function CampusMap({ buildingPins, focusBuildingId, onBuildingPress }: Ca
           }}
         />
 
-        {/* 3D building extrusions */}
-        <MapboxGL.FillExtrusionLayer
-          id="3d-buildings"
-          sourceID="composite"
-          sourceLayerID="building"
-          filter={['==', 'extrude', 'true']}
-          minZoomLevel={14}
-          style={{
-            fillExtrusionColor: 'hsl(40, 43%, 93%)',
-            fillExtrusionHeight: ['interpolate', ['linear'], ['zoom'], 14, 0, 14.5, ['get', 'height']],
-            fillExtrusionBase: ['interpolate', ['linear'], ['zoom'], 14, 0, 14.5, ['get', 'min_height']],
-            fillExtrusionOpacity: 0.6,
-          }}
-        />
+{/* 3D building extrusions - using mapbox-streets vector source */}
+        <MapboxGL.VectorSource
+          id="mapbox-streets"
+          url="mapbox://mapbox.mapbox-streets-v8"
+        >
+          <MapboxGL.FillExtrusionLayer
+            id="3d-buildings"
+            sourceLayerID="building"
+            filter={['==', 'extrude', 'true']}
+            minZoomLevel={14}
+            style={{
+              fillExtrusionColor: 'hsl(40, 43%, 93%)',
+              fillExtrusionHeight: ['interpolate', ['linear'], ['zoom'], 14, 0, 14.5, ['get', 'height']],
+              fillExtrusionBase: ['interpolate', ['linear'], ['zoom'], 14, 0, 14.5, ['get', 'min_height']],
+              fillExtrusionOpacity: 0.6,
+            }}
+          />
+        </MapboxGL.VectorSource>
 
           <MapboxGL.ShapeSource
               id="building-pins"
