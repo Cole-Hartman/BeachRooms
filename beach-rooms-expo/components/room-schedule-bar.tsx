@@ -25,7 +25,7 @@ function hourLabel(hour: number): string {
 }
 
 function hourSuffix(hour: number): string {
-  return hour < 12 ? 'am' : 'pm';
+  return hour < 12 ? ' am' : ' pm';
 }
 
 interface RoomScheduleBarProps {
@@ -104,8 +104,10 @@ export function RoomScheduleBar({ schedules, now = new Date() }: RoomScheduleBar
                   ]}
                 />
               ))}
-              <ThemedText style={styles.hourLabel}>{hourLabel(hour)}</ThemedText>
-              <ThemedText style={styles.hourSuffix}>{hourSuffix(hour)}</ThemedText>
+              <ThemedText style={styles.hourLabel}>
+                {hourLabel(hour)}
+                <ThemedText style={styles.hourSuffix}>{hourSuffix(hour)}</ThemedText>
+              </ThemedText>
             </TouchableOpacity>
           );
         })}
@@ -149,11 +151,6 @@ const styles = StyleSheet.create({
     color: LABEL_COLOR,
   },
   hourSuffix: {
-    position: 'absolute',
-    bottom: 3,
-    left: 0,
-    right: 0,
-    textAlign: 'center',
     fontSize: 8,
     fontWeight: '400',
     color: LABEL_COLOR,
